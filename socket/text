@@ -1,0 +1,90 @@
+#include <stdio.h>
+#include <stdbool.h>
+#include <string.h>
+#include <unistd.h>
+#include <stdlib.h>
+#include <sys/socket.h>
+#include <arpa/inet.h>
+#include <netinet/in.h>
+
+int main() {
+    int sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+    if (sock < 0) {
+        perror("socket creation failed");
+        return -1;
+    }
+
+    char buf[BUFSIZ] = {0};
+    struct sockaddr_in temp;
+    memset(&temp, 0, sizeof(temp));
+    temp.sin_family  = AF_INET;
+    temp.sin_addr.s_addr  = htonl(INADDR_ANY);
+    temp.sin_port  = htons(1234);
+
+    if (bind(sock, (struct sockaddr *)&temp, sizeof(temp)) < 0) {
+        perror("bind failed");
+        return -1;
+    }
+
+    struct sockaddr clntTemp;
+    socklen_t size = sizeof(clntTemp);
+    while (true) {
+        int nByte = recvfrom(sock, buf, BUFSIZ, 0, &clntTemp, &size);
+        if (nByte < 0) {
+            perror("recvfrom failed");
+            continue;
+        }
+        buf[nByte] = '\0';  // 确保字符串以 '\0' 结尾
+        printf("%s\n", buf);
+        sendto(sock, buf, nByte, 0, &clntTemp, size);
+    }
+    close(sock);
+    return 0;
+}
+
+
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include <stdbool.h>
+#include <unistd.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+
+int main() {
+    int sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+    if (sock < 0) {
+        perror("socket creation failed");
+        return -1;
+    }
+
+    char buf[BUFSIZ] = "无用的测试数据";
+    int dataLen = strlen(buf);
+
+    struct sockaddr_in clnt;
+    memset(&clnt, 0, sizeof(clnt));
+    clnt.sin_family  = AF_INET;
+    clnt.sin_addr.s_addr  = inet_addr("127.0.0.1");
+    clnt.sin_port  = htons(1234);
+
+    struct sockaddr sever;
+    socklen_t size = sizeof(sever);
+    memset(&sever, 0, size);
+
+    while (true) {
+        if (sendto(sock, buf, dataLen, 0, (struct sockaddr *)&clnt, sizeof(clnt)) < 0) {
+            perror("sendto failed");
+            continue;
+        }
+        int nByte = recvfrom(sock, buf, BUFSIZ, 0, &sever, &size);
+        if (nByte < 0) {
+            perror("recvfrom failed");
+            continue;
+        }
+        buf[nByte] = '\0';  // 确保字符串以 '\0' 结尾
+        printf("%s\n", buf);
+    }
+    close(sock);
+    return 0;
+}
